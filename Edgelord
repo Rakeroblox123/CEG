@@ -1,0 +1,402 @@
+local ModelEffect = game:GetObjects("rbxassetid://14949130713")[1]
+if ModelEffect then
+    for i,v in pairs(ModelEffect.HumanoidRootPart:GetChildren()) do
+        if v.ClassName == "ParticleEmitter" then
+            for i,p in pairs(game.Players.LocalPlayer.Character:GetChildren()) do
+                if p:IsA("Part") then
+                    v:Clone().Parent = p
+                end
+            end
+        end
+    end
+    ModelEffect:Destroy()
+end
+
+local ModelDeath = game:GetObjects("rbxassetid://12195574482")[1]
+if ModelDeath then
+    for i,a in pairs(ModelDeath.Torso:GetDescendants()) do
+        if a.Name == "Attachment4" or a.Name == "Flare" or a.Name == "Star3" or a.Name == "Bits" then
+            a:Destroy() 
+        end
+    end
+    for i,a in pairs(ModelDeath.Torso:GetChildren()) do
+        if a.ClassName == "Attachment" and a:FindFirstChildWhichIsA("ParticleEmitter") then
+            a:Clone().Parent = game.Players.LocalPlayer.Character.Torso
+        end
+    end
+    ModelDeath:Destroy()
+end
+
+-- Get the local player and their character
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Function to make the character, including hair and accessories, fully black and apply a red outline
+local function makeCharacterCompletelyBlack()
+    for _, descendant in pairs(character:GetDescendants()) do
+        if descendant:IsA("BasePart") or descendant:IsA("MeshPart") then
+            descendant.Color = Color3.new(0, 0, 0) -- Make all body parts black
+            descendant.Material = Enum.Material.SmoothPlastic
+        elseif descendant:IsA("Accessory") then
+            if descendant:FindFirstChild("Handle") then
+                -- Turn the handle of the accessory black
+                descendant.Handle.Color = Color3.new(0, 0, 0)
+                descendant.Handle.Material = Enum.Material.SmoothPlastic
+
+                -- Check for meshes or textures in the accessory's handle
+                for _, child in pairs(descendant.Handle:GetDescendants()) do
+                    if child:IsA("MeshPart") or child:IsA("Part") or child:IsA("UnionOperation") then
+                        child.Color = Color3.new(0, 0, 0)
+                        child.Material = Enum.Material.SmoothPlastic
+                    elseif child:IsA("SpecialMesh") then
+                        child.TextureId = "" -- Remove texture for a uniform color
+                    end
+                end
+            end
+        elseif descendant:IsA("Decal") or descendant:IsA("Texture") then
+            descendant:Destroy() -- Remove decals and textures
+        elseif descendant:IsA("Clothing") or descendant:IsA("ShirtGraphic") then
+            descendant:Destroy() -- Remove clothing to keep the body fully black
+        end
+    end
+
+    -- Add a red outline effect to the character
+    local outlineEffect = Instance.new("Highlight")
+    outlineEffect.Parent = character
+    outlineEffect.OutlineColor = Color3.new(1, 0, 0) -- Red outline
+    outlineEffect.FillColor = Color3.new(0, 0, 0) -- Black fill
+    outlineEffect.FillTransparency = 1 -- Only show the outline
+end
+
+-- Execute the function
+makeCharacterCompletelyBlack()
+
+
+local args = {
+[1] = "rbxassetid://9133539469",
+[2] = game:GetService("Players").LocalPlayer.Character.Torso
+}
+
+game:GetService("ReplicatedStorage"):WaitForChild("PlaySoundRemote"):InvokeServer(unpack(args))
+
+-- Load the player and character
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Load the idle animation
+local idleAnimation = Instance.new("Animation")
+idleAnimation.AnimationId = "rbxassetid://16163355836"
+local idleAnimationTrack = humanoid:LoadAnimation(idleAnimation)
+idleAnimationTrack.Looped = true -- Set the idle animation to loop
+
+-- Load the move animation
+local moveAnimation = Instance.new("Animation")
+moveAnimation.AnimationId = "rbxassetid://16163350920"
+local moveAnimationTrack = humanoid:LoadAnimation(moveAnimation)
+moveAnimationTrack.Looped = true -- Set the move animation to loop
+
+-- Manage playing and stopping animations based on character movement
+humanoid.Running:Connect(function(speed)
+    if speed > 0 then
+        -- Play the move animation and stop the idle animation when the character is moving
+        if not moveAnimationTrack.IsPlaying then
+            moveAnimationTrack:Play()
+        end
+        if idleAnimationTrack.IsPlaying then
+            idleAnimationTrack:Stop()
+        end
+    else
+        -- Play the idle animation and stop the move animation when the character stops
+        if moveAnimationTrack.IsPlaying then
+            moveAnimationTrack:Stop()
+        end
+        if not idleAnimationTrack.IsPlaying then
+            idleAnimationTrack:Play()
+        end
+    end
+end)
+
+-- Play the idle animation initially if the character is not moving
+if humanoid.MoveDirection.Magnitude == 0 then
+    idleAnimationTrack:Play()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 75, 0, 75)
+button.Position = UDim2.new(0.5, -75, 0.5, -75)
+button.AnchorPoint = Vector2.new(0.5, 0.5)
+button.BackgroundColor3 = Color3.new(0, 0, 0)
+button.Text = "E"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 35
+button.Draggable = true
+button.Active = true
+button.Parent = screenGui
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://17670135152"
+local animationTrack = humanoid:LoadAnimation(animation)
+animationTrack.Looped = false
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local slapDistance = 30
+local slapCooldown = 0.585
+local lastSlapTime = 0
+local slapEnabled = false
+local selectedRemote = "PlagueHit"
+
+local function slapClosestPlayer()
+    if not slapEnabled then return end
+
+    local closestPlayer = nil
+    local closestDistance = slapDistance
+
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local playerPosition = player.Character.HumanoidRootPart.Position
+
+        for _, otherPlayer in pairs(Players:GetPlayers()) do
+            if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local otherPlayerPosition = otherPlayer.Character.HumanoidRootPart.Position
+                local distance = (playerPosition - otherPlayerPosition).Magnitude
+
+                if distance <= closestDistance then
+                    closestDistance = distance
+                    closestPlayer = otherPlayer
+                end
+            end
+        end
+
+        if closestPlayer and tick() - lastSlapTime >= slapCooldown then
+            lastSlapTime = tick()
+            if closestPlayer.Character and closestPlayer.Character:FindFirstChild("Head") then
+                local head = closestPlayer.Character.Head
+                local args = {head}
+                local remote = ReplicatedStorage:FindFirstChild(selectedRemote)
+                if remote then
+                    remote:FireServer(unpack(args))
+                end
+            end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if slapEnabled then
+        slapClosestPlayer()
+    end
+end)
+
+button.MouseButton1Click:Connect(function()
+    animationTrack:Play()
+    slapEnabled = true
+
+    local plagueDetector = Workspace:FindFirstChild("Lobby") 
+        and Workspace.Lobby:FindFirstChild("Plague") 
+        and Workspace.Lobby.Plague:FindFirstChild("ClickDetector")
+    
+    if plagueDetector then
+        fireclickdetector(plagueDetector)
+    end
+
+    task.delay(0.3, function()
+        slapEnabled = false
+    end)
+end)
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Parent = screenGui
+button.Size = UDim2.new(0, 75, 0, 75)
+button.Position = UDim2.new(0.5, -100, 0.5, -25)
+button.BackgroundColor3 = Color3.new(0, 0, 0)
+button.Text = "E (Boxer)"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Draggable = true  -- Make the button draggable
+button.Active = true  -- Required for drag functionality
+
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://17670135152"
+
+local cooldown = false
+
+local function FireForAllPlayers()
+    local Players = game:GetService("Players")
+    local BoxingEvent = game:GetService("ReplicatedStorage").Events.Boxing
+
+    for _, player in pairs(Players:GetPlayers()) do
+        local args = {
+            [1] = player,
+            [2] = true
+        }
+        BoxingEvent:FireServer(unpack(args))
+    end
+end
+
+local function TriggerClickDetector()
+    local clickDetector = Workspace:FindFirstChild("Lobby")
+        and Workspace.Lobby:FindFirstChild("Boxer")
+        and Workspace.Lobby.Boxer:FindFirstChild("ClickDetector")
+        
+    if clickDetector then
+        fireclickdetector(clickDetector)
+    else
+        warn("ClickDetector not found in Workspace.Lobby.Boxer")
+    end
+end
+
+button.MouseButton1Click:Connect(function()
+    if not cooldown then
+        cooldown = true
+        
+        local character = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+        if humanoid then
+            local animTrack = humanoid:LoadAnimation(animation)
+            animTrack:Play()
+        end
+
+        FireForAllPlayers()
+        TriggerClickDetector()
+
+        task.wait(0.4)
+        cooldown = false
+    end
+end)
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+-- Create Button
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 75, 0, 75)
+button.Position = UDim2.new(0.5, -75, 0.5, -25)
+button.AnchorPoint = Vector2.new(0.5, 0.5)
+button.BackgroundColor3 = Color3.new(0, 0, 0) -- Black background
+button.Text = "Pain"
+button.TextColor3 = Color3.new(1, 1, 1) -- White text
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 35
+button.Draggable = true
+button.Parent = screenGui
+
+-- Load the player and character
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Load the animation
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://17274903927" -- Provided animation ID
+local animationTrack = humanoid:LoadAnimation(animation)
+animationTrack.Looped = false -- Play only once
+
+-- Button click event to execute scripts
+button.MouseButton1Click:Connect(function()
+    -- Play the animation
+    animationTrack:Play()
+
+    -- Execute fireclickdetector
+    local bindDetector = Workspace:FindFirstChild("Lobby") 
+        and Workspace.Lobby:FindFirstChild("Bind") 
+        and Workspace.Lobby.Bind:FindFirstChild("ClickDetector")
+    
+    if bindDetector then
+        fireclickdetector(bindDetector)
+    else
+        warn("ClickDetector not found in Workspace.Lobby.Bind")
+    end
+
+    -- Execute the custom args script
+    local args = {
+        [1] = "ultimate",
+        [2] = {
+            ["goal"] = CFrame.new(-39.3119, -34.6275, 8.3248) * CFrame.Angles(-1.8409, 0.8701, 1.8989),
+            ["origin"] = CFrame.new(21.8408, 15.0806, -5.4395) * CFrame.Angles(-1.8409, 0.8701, 1.8989)
+        }
+    }
+
+    -- Assuming there is a RemoteEvent or RemoteFunction in ReplicatedStorage to fire
+    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteName")
+    if remote then
+        remote:FireServer(unpack(args))
+    else
+        warn("Remote not found in ReplicatedStorage")
+    end
+end)
+
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 150, 0, 50)
+button.Position = UDim2.new(0.5, -75, 0.5, -25)
+button.AnchorPoint = Vector2.new(0.5, 0.5)
+button.BackgroundColor3 = Color3.new(0, 0, 0)
+button.Text = "Power UP"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 24
+button.Draggable = true
+button.Parent = screenGui
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+button.MouseButton1Click:Connect(function()
+    game:GetService("ReplicatedStorage").Prop:FireServer()
+    humanoid.WalkSpeed = 40
+end)
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TeleportButtonGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+local draggableFrame = Instance.new("Frame")
+draggableFrame.Size = UDim2.new(0, 75, 0, 75)
+draggableFrame.Position = UDim2.new(0.85, 0, 0.4, 0)
+draggableFrame.BackgroundTransparency = 1
+draggableFrame.Active = true
+draggableFrame.Draggable = true
+draggableFrame.Parent = screenGui
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, 0, 1, 0)
+button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "T"
+button.Font = Enum.Font.SourceSans
+button.TextScaled = true
+button.Parent = draggableFrame
+
+local function teleportForward()
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        local lookDirection = rootPart.CFrame.LookVector
+        rootPart.CFrame = rootPart.CFrame + (lookDirection * 30)
+    end
+end
+
+button.MouseButton1Click:Connect(teleportForward)
